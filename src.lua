@@ -997,7 +997,7 @@ function rolibwaita:NewWindow(WindowOptions: WindowOptions)
 		local messageText = inputBox.Text
 		if messageText ~= "" and string.len(messageText) <= 200 then
 			local player = LocalPlayer
-			addMessage(player.Name, player.UserId, messageText, true)
+
 			
 			if callback ~= nil then
 				task.spawn(function()
