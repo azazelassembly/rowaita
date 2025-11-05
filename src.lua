@@ -798,7 +798,7 @@ function rolibwaita:NewWindow(WindowOptions: WindowOptions)
 	inputBox.Position = UDim2.new(0, 12, 0, 8)
 	inputBox.BackgroundTransparency = 1
 	inputBox.Text = ""
-	inputBox.PlaceholderText = "Введите сообщение..."
+	inputBox.PlaceholderText = "Enter message..."
 	inputBox.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
 	inputBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 	inputBox.TextSize = 14
