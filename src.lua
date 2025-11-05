@@ -708,216 +708,389 @@ function rolibwaita:NewWindow(WindowOptions: WindowOptions)
 			end
 
 			local sectionFuncs = {}
-      function sectionFuncs:NewChat(ChatOptions) -- chat section
-    	local chatClone = Examples.Chat:Clone() -- Предполагается, что вы создали пример Chat в Examples
-    	local messagesContainer = chatClone.MessagesContainer
-    	local scrollingFrame = messagesContainer.ScrollingFrame
-    	local inputFrame = chatClone.InputFrame
-    	local inputBox = inputFrame.TextBox
-    	local sendButton = inputFrame.SendButton
-    	local messageTemplate = Examples.ChatMessage:Clone() -- Шаблон сообщения
-    	
-    	local callback
-    	local maxMessages = ChatOptions.MaxMessages or 50
-    	local messageCount = 0
-    	
-    	if ChatOptions.Name == nil then
-    		error("Required setting 'Name' not given")
-    	end
-    	
-    	if ChatOptions.Callback ~= nil then
-    		callback = ChatOptions.Callback
-    	end
-    	
-    	chatClone.Name = ChatOptions.Name
-    	chatClone.Title.Text = ChatOptions.Name
-    	
-    	-- Инициализация прозрачности
-    	chatClone.BackgroundTransparency = 1
-    	chatClone.Title.TextTransparency = 1
-    	messagesContainer.BackgroundTransparency = 1
-    	scrollingFrame.BackgroundTransparency = 1
-    	inputFrame.BackgroundTransparency = 1
-    	inputBox.TextTransparency = 1
-    	sendButton.BackgroundTransparency = 1
-    	sendButton.Icon.ImageTransparency = 1
-    	
-    	handleCornerRadius(chatClone)
-    	chatClone.Parent = sectionClone
-    	
-    	-- Анимация появления
-    	createTween(chatClone, TweenPresets.Medium, { BackgroundTransparency = 0 })
-    	createTween(chatClone.Title, TweenPresets.Medium, { TextTransparency = 0 })
-    	createTween(messagesContainer, TweenPresets.Medium, { BackgroundTransparency = 0 })
-    	createTween(scrollingFrame, TweenPresets.Medium, { BackgroundTransparency = 0 })
-    	createTween(inputFrame, TweenPresets.Medium, { BackgroundTransparency = 0 })
-    	createTween(inputBox, TweenPresets.Medium, { TextTransparency = 0 })
-    	createTween(sendButton, TweenPresets.Medium, { BackgroundTransparency = 0 })
-    	createTween(sendButton.Icon, TweenPresets.Medium, { ImageTransparency = 0 })
-    	
-    	-- Функция для получения headshot аватара
-    	local function getPlayerHeadshot(userId)
-    		local success, result = pcall(function()
-    			return Players:GetUserThumbnailAsync(
-    				userId,
-    				Enum.ThumbnailType.HeadShot,
-    				Enum.ThumbnailSize.Size150x150
-    			)
-    		end)
-    		if success then
-    			return result
-    		else
-    			return "rbxasset://textures/ui/GuiImagePlaceholder.png" -- Placeholder если не удалось загрузить
-    		end
-    	end
-    	
-    	-- Функция добавления сообщения
-    	local function addMessage(username, userId, messageText, isLocalPlayer)
-    		if messageCount >= maxMessages then
-    			local oldestMessage = scrollingFrame:GetChildren()[1]
-    			if oldestMessage and oldestMessage:IsA("Frame") then
-    				oldestMessage:Destroy()
-    				messageCount -= 1
-    			end
-    		end
-    		
-    		local message = messageTemplate:Clone()
-    		local avatar = message.Avatar
-    		local usernameLabel = message.Username
-    		local messageLabel = message.Message
-    		local timestamp = message.Timestamp
-    		
-    		-- Получение аватара
-    		local headshotUrl = getPlayerHeadshot(userId)
-    		avatar.Image = headshotUrl
-    		
-    		-- Установка данных
-    		usernameLabel.Text = username
-    		messageLabel.Text = messageText
-    		timestamp.Text = os.date("%H:%M")
-    		
-    		-- Различный стиль для локального игрока
-    		if isLocalPlayer then
-    			message.BackgroundColor3 = Color3.fromRGB(53, 132, 228)
-    			usernameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    		else
-    			message.BackgroundColor3 = Color3.fromRGB(64, 64, 64)
-    			usernameLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-    		end
-    		
-    		-- Анимация появления
-    		message.BackgroundTransparency = 1
-    		avatar.ImageTransparency = 1
-    		usernameLabel.TextTransparency = 1
-    		messageLabel.TextTransparency = 1
-    		timestamp.TextTransparency = 1
-    		
-    		message.Parent = scrollingFrame
-    		messageCount += 1
-    		
-    		createTween(message, TweenPresets.Fast, { BackgroundTransparency = 0 })
-    		createTween(avatar, TweenPresets.Fast, { ImageTransparency = 0 })
-    		createTween(usernameLabel, TweenPresets.Fast, { TextTransparency = 0 })
-    		createTween(messageLabel, TweenPresets.Fast, { TextTransparency = 0 })
-    		createTween(timestamp, TweenPresets.Fast, { TextTransparency = 0 })
-    		
-    		-- Автоскролл вниз
-    		task.wait(0.1)
-    		scrollingFrame.CanvasPosition = Vector2.new(0, scrollingFrame.AbsoluteCanvasSize.Y)
-    		
-    		return message
-    	end
-    	
-    	-- Отправка сообщения
-    	local function sendMessage()
-    		local messageText = inputBox.Text
-    		if messageText ~= "" and string.len(messageText) <= 200 then
-    			local player = LocalPlayer
-    			addMessage(player.Name, player.UserId, messageText, true)
-    			
-    			if callback ~= nil then
-    				callback(player.Name, player.UserId, messageText)
-    			end
-    			
-    			inputBox.Text = ""
-    		end
-    	end
-    	
-    	-- События для кнопки отправки
-    	sendButton.Hitbox.MouseEnter:Connect(function()
-    		createTween(sendButton, TweenPresets.Fast, { BackgroundColor3 = Color3.fromRGB(63, 142, 238) })
-    	end)
-    	
-    	sendButton.Hitbox.MouseLeave:Connect(function()
-    		createTween(sendButton, TweenPresets.Fast, { BackgroundColor3 = Color3.fromRGB(53, 132, 228) })
-    	end)
-    	
-    	sendButton.Hitbox.MouseButton1Down:Connect(function()
-    		createTween(sendButton, TweenPresets.Fast, { BackgroundColor3 = Color3.fromRGB(73, 152, 248) })
-    	end)
-    	
-    	sendButton.Hitbox.MouseButton1Up:Connect(function()
-    		createTween(sendButton, TweenPresets.Fast, { BackgroundColor3 = Color3.fromRGB(63, 142, 238) })
-    		sendMessage()
-    	end)
-    	
-    	-- Отправка по Enter
-    	inputBox.FocusLost:Connect(function(enterPressed)
-    		if enterPressed then
-    			sendMessage()
-    		end
-    	end)
-    	
-    	-- Hover эффект для input frame
-    	chatClone.MouseEnter:Connect(function()
-    		createTween(chatClone, TweenPresets.Fast, { BackgroundColor3 = Color3.fromRGB(60, 60, 60) })
-    	end)
-    	
-    	chatClone.MouseLeave:Connect(function()
-    		createTween(chatClone, TweenPresets.Fast, { BackgroundColor3 = Color3.fromRGB(54, 54, 54) })
-    	end)
-    	
-    	local chatFuncs = {}
-    	
-    	-- Функция добавления сообщения от другого игрока
-    	function chatFuncs:AddMessage(username, userId, messageText)
-    		addMessage(username, userId, messageText, false)
-    	end
-    	
-    	-- Функция очистки чата
-    	function chatFuncs:Clear()
-    		for _, child in pairs(scrollingFrame:GetChildren()) do
-    			if child:IsA("Frame") then
-    				createTween(child, TweenPresets.Fast, { BackgroundTransparency = 1 })
-    				createTween(child.Avatar, TweenPresets.Fast, { ImageTransparency = 1 })
-    				createTween(child.Username, TweenPresets.Fast, { TextTransparency = 1 })
-    				createTween(child.Message, TweenPresets.Fast, { TextTransparency = 1 })
-    				createTween(child.Timestamp, TweenPresets.Fast, { TextTransparency = 1 })
-    				task.wait(0.05)
-    			end
-    		end
-    		task.wait(0.3)
-    		scrollingFrame:ClearAllChildren()
-    		messageCount = 0
-    	end
-    	
-    	-- Функция удаления чата
-    	function chatFuncs:Remove()
-    		createTween(chatClone, TweenPresets.Medium, { BackgroundTransparency = 1 })
-    		createTween(chatClone, TweenPresets.Medium, { Size = UDim2.new(1, 0, 0, 0) })
-    		createTween(chatClone.Title, TweenPresets.Medium, { TextTransparency = 1 })
-    		createTween(messagesContainer, TweenPresets.Medium, { BackgroundTransparency = 1 })
-    		createTween(inputFrame, TweenPresets.Medium, { BackgroundTransparency = 1 })
-    		if chatClone:FindFirstChild("CornerCover") then
-    			createTween(chatClone.CornerCover, TweenPresets.Medium, { BackgroundTransparency = 1 })
-    		end
-    		task.wait(0.6)
-    		OnMainElementRemove(chatClone)
-    		chatClone:Destroy()
-    	end
-    	
-    	return chatFuncs
-    end
+			function sectionFuncs:NewChat(ChatOptions) -- chat section
+	local chatClone
+	local callback
+	local maxMessages = ChatOptions.MaxMessages or 50
+	local messageCount = 0
+	
+	if ChatOptions.Name == nil then
+		error("Required setting 'Name' not given")
+	end
+	
+	if ChatOptions.Callback ~= nil then
+		callback = ChatOptions.Callback
+	end
+	
+	-- Создание основного Chat Frame
+	chatClone = Instance.new("Frame")
+	chatClone.Name = ChatOptions.Name
+	chatClone.Size = UDim2.new(1, 0, 0, 400)
+	chatClone.BackgroundColor3 = Color3.fromRGB(54, 54, 54)
+	chatClone.BorderSizePixel = 0
+	chatClone.ClipsDescendants = true
+	
+	local chatCorner = Instance.new("UICorner")
+	chatCorner.CornerRadius = UDim.new(0, 12)
+	chatCorner.Parent = chatClone
+	
+	-- Title
+	local title = Instance.new("TextLabel")
+	title.Name = "Title"
+	title.Size = UDim2.new(1, -24, 0, 30)
+	title.Position = UDim2.new(0, 12, 0, 10)
+	title.BackgroundTransparency = 1
+	title.Text = ChatOptions.Name
+	title.TextColor3 = Color3.fromRGB(255, 255, 255)
+	title.TextSize = 18
+	title.Font = Enum.Font.GothamBold
+	title.TextXAlignment = Enum.TextXAlignment.Left
+	title.Parent = chatClone
+	
+	-- Messages Container
+	local messagesContainer = Instance.new("Frame")
+	messagesContainer.Name = "MessagesContainer"
+	messagesContainer.Size = UDim2.new(1, -24, 1, -120)
+	messagesContainer.Position = UDim2.new(0, 12, 0, 45)
+	messagesContainer.BackgroundColor3 = Color3.fromRGB(44, 44, 44)
+	messagesContainer.BorderSizePixel = 0
+	messagesContainer.Parent = chatClone
+	
+	local containerCorner = Instance.new("UICorner")
+	containerCorner.CornerRadius = UDim.new(0, 8)
+	containerCorner.Parent = messagesContainer
+	
+	-- ScrollingFrame
+	local scrollingFrame = Instance.new("ScrollingFrame")
+	scrollingFrame.Name = "ScrollingFrame"
+	scrollingFrame.Size = UDim2.new(1, -16, 1, -16)
+	scrollingFrame.Position = UDim2.new(0, 8, 0, 8)
+	scrollingFrame.BackgroundTransparency = 1
+	scrollingFrame.BorderSizePixel = 0
+	scrollingFrame.ScrollBarThickness = 4
+	scrollingFrame.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
+	scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+	scrollingFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	scrollingFrame.Parent = messagesContainer
+	
+	local listLayout = Instance.new("UIListLayout")
+	listLayout.Padding = UDim.new(0, 8)
+	listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	listLayout.Parent = scrollingFrame
+	
+	-- Input Frame
+	local inputFrame = Instance.new("Frame")
+	inputFrame.Name = "InputFrame"
+	inputFrame.Size = UDim2.new(1, -24, 0, 50)
+	inputFrame.Position = UDim2.new(0, 12, 1, -65)
+	inputFrame.BackgroundColor3 = Color3.fromRGB(44, 44, 44)
+	inputFrame.BorderSizePixel = 0
+	inputFrame.Parent = chatClone
+	
+	local inputCorner = Instance.new("UICorner")
+	inputCorner.CornerRadius = UDim.new(0, 8)
+	inputCorner.Parent = inputFrame
+	
+	-- TextBox
+	local inputBox = Instance.new("TextBox")
+	inputBox.Name = "TextBox"
+	inputBox.Size = UDim2.new(1, -70, 1, -16)
+	inputBox.Position = UDim2.new(0, 12, 0, 8)
+	inputBox.BackgroundTransparency = 1
+	inputBox.Text = ""
+	inputBox.PlaceholderText = "Введите сообщение..."
+	inputBox.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
+	inputBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+	inputBox.TextSize = 14
+	inputBox.Font = Enum.Font.Gotham
+	inputBox.TextXAlignment = Enum.TextXAlignment.Left
+	inputBox.TextYAlignment = Enum.TextYAlignment.Center
+	inputBox.ClearTextOnFocus = false
+	inputBox.TextWrapped = true
+	inputBox.MultiLine = false
+	inputBox.Parent = inputFrame
+	
+	-- Send Button
+	local sendButton = Instance.new("Frame")
+	sendButton.Name = "SendButton"
+	sendButton.Size = UDim2.new(0, 40, 0, 34)
+	sendButton.Position = UDim2.new(1, -50, 0, 8)
+	sendButton.BackgroundColor3 = Color3.fromRGB(53, 132, 228)
+	sendButton.BorderSizePixel = 0
+	sendButton.Parent = inputFrame
+	
+	local sendButtonCorner = Instance.new("UICorner")
+	sendButtonCorner.CornerRadius = UDim.new(0, 6)
+	sendButtonCorner.Parent = sendButton
+	
+	local sendIcon = Instance.new("ImageLabel")
+	sendIcon.Name = "Icon"
+	sendIcon.Size = UDim2.new(0, 20, 0, 20)
+	sendIcon.Position = UDim2.new(0.5, -10, 0.5, -10)
+	sendIcon.BackgroundTransparency = 1
+	sendIcon.Image = "rbxassetid://7733717447" -- Send icon
+	sendIcon.ImageColor3 = Color3.fromRGB(255, 255, 255)
+	sendIcon.Parent = sendButton
+	
+	local sendHitbox = Instance.new("TextButton")
+	sendHitbox.Name = "Hitbox"
+	sendHitbox.Size = UDim2.new(1, 0, 1, 0)
+	sendHitbox.BackgroundTransparency = 1
+	sendHitbox.Text = ""
+	sendHitbox.Parent = sendButton
+	
+	handleCornerRadius(chatClone)
+	
+	-- Инициализация прозрачности
+	chatClone.BackgroundTransparency = 1
+	title.TextTransparency = 1
+	messagesContainer.BackgroundTransparency = 1
+	inputFrame.BackgroundTransparency = 1
+	inputBox.TextTransparency = 1
+	sendButton.BackgroundTransparency = 1
+	sendIcon.ImageTransparency = 1
+	
+	chatClone.Parent = sectionClone
+	
+	-- Анимация появления
+	createTween(chatClone, TweenPresets.Medium, { BackgroundTransparency = 0 })
+	createTween(title, TweenPresets.Medium, { TextTransparency = 0 })
+	createTween(messagesContainer, TweenPresets.Medium, { BackgroundTransparency = 0 })
+	createTween(inputFrame, TweenPresets.Medium, { BackgroundTransparency = 0 })
+	createTween(inputBox, TweenPresets.Medium, { TextTransparency = 0 })
+	createTween(sendButton, TweenPresets.Medium, { BackgroundTransparency = 0 })
+	createTween(sendIcon, TweenPresets.Medium, { ImageTransparency = 0 })
+	
+	-- Функция для получения headshot аватара
+	local function getPlayerHeadshot(userId)
+		local success, result = pcall(function()
+			return Players:GetUserThumbnailAsync(
+				userId,
+				Enum.ThumbnailType.HeadShot,
+				Enum.ThumbnailSize.Size150x150
+			)
+		end)
+		if success then
+			return result
+		else
+			return "rbxasset://textures/ui/GuiImagePlaceholder.png"
+		end
+	end
+	
+	-- Функция создания сообщения
+	local function createMessageFrame(username, userId, messageText, isLocalPlayer)
+		local message = Instance.new("Frame")
+		message.Name = "Message_" .. tostring(messageCount)
+		message.Size = UDim2.new(1, -8, 0, 70)
+		message.BackgroundColor3 = isLocalPlayer and Color3.fromRGB(53, 132, 228) or Color3.fromRGB(64, 64, 64)
+		message.BorderSizePixel = 0
+		
+		local messageCorner = Instance.new("UICorner")
+		messageCorner.CornerRadius = UDim.new(0, 8)
+		messageCorner.Parent = message
+		
+		-- Avatar
+		local avatar = Instance.new("ImageLabel")
+		avatar.Name = "Avatar"
+		avatar.Size = UDim2.new(0, 45, 0, 45)
+		avatar.Position = UDim2.new(0, 10, 0, 12)
+		avatar.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+		avatar.BorderSizePixel = 0
+		avatar.Image = getPlayerHeadshot(userId)
+		avatar.Parent = message
+		
+		local avatarCorner = Instance.new("UICorner")
+		avatarCorner.CornerRadius = UDim.new(1, 0)
+		avatarCorner.Parent = avatar
+		
+		-- Username
+		local usernameLabel = Instance.new("TextLabel")
+		usernameLabel.Name = "Username"
+		usernameLabel.Size = UDim2.new(1, -140, 0, 20)
+		usernameLabel.Position = UDim2.new(0, 65, 0, 10)
+		usernameLabel.BackgroundTransparency = 1
+		usernameLabel.Text = username
+		usernameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+		usernameLabel.TextSize = 14
+		usernameLabel.Font = Enum.Font.GothamBold
+		usernameLabel.TextXAlignment = Enum.TextXAlignment.Left
+		usernameLabel.Parent = message
+		
+		-- Message Text
+		local messageLabel = Instance.new("TextLabel")
+		messageLabel.Name = "Message"
+		messageLabel.Size = UDim2.new(1, -75, 0, 35)
+		messageLabel.Position = UDim2.new(0, 65, 0, 30)
+		messageLabel.BackgroundTransparency = 1
+		messageLabel.Text = messageText
+		messageLabel.TextColor3 = Color3.fromRGB(240, 240, 240)
+		messageLabel.TextSize = 13
+		messageLabel.Font = Enum.Font.Gotham
+		messageLabel.TextXAlignment = Enum.TextXAlignment.Left
+		messageLabel.TextYAlignment = Enum.TextYAlignment.Top
+		messageLabel.TextWrapped = true
+		messageLabel.Parent = message
+		
+		-- Timestamp
+		local timestamp = Instance.new("TextLabel")
+		timestamp.Name = "Timestamp"
+		timestamp.Size = UDim2.new(0, 60, 0, 20)
+		timestamp.Position = UDim2.new(1, -70, 0, 10)
+		timestamp.BackgroundTransparency = 1
+		timestamp.Text = os.date("%H:%M")
+		timestamp.TextColor3 = Color3.fromRGB(200, 200, 200)
+		timestamp.TextSize = 11
+		timestamp.Font = Enum.Font.Gotham
+		timestamp.TextXAlignment = Enum.TextXAlignment.Right
+		timestamp.Parent = message
+		
+		return message, avatar, usernameLabel, messageLabel, timestamp
+	end
+	
+	-- Функция добавления сообщения
+	local function addMessage(username, userId, messageText, isLocalPlayer)
+		if messageCount >= maxMessages then
+			local oldestMessage = scrollingFrame:FindFirstChild("Message_0")
+			if oldestMessage then
+				oldestMessage:Destroy()
+				messageCount -= 1
+				-- Переименовать все сообщения
+				for i = 1, messageCount do
+					local msg = scrollingFrame:FindFirstChild("Message_" .. i)
+					if msg then
+						msg.Name = "Message_" .. (i - 1)
+					end
+				end
+			end
+		end
+		
+		local message, avatar, usernameLabel, messageLabel, timestamp = 
+			createMessageFrame(username, userId, messageText, isLocalPlayer)
+		
+		-- Анимация появления
+		message.BackgroundTransparency = 1
+		avatar.ImageTransparency = 1
+		usernameLabel.TextTransparency = 1
+		messageLabel.TextTransparency = 1
+		timestamp.TextTransparency = 1
+		
+		message.Parent = scrollingFrame
+		messageCount += 1
+		
+		createTween(message, TweenPresets.Fast, { BackgroundTransparency = 0 })
+		createTween(avatar, TweenPresets.Fast, { ImageTransparency = 0 })
+		createTween(usernameLabel, TweenPresets.Fast, { TextTransparency = 0 })
+		createTween(messageLabel, TweenPresets.Fast, { TextTransparency = 0 })
+		createTween(timestamp, TweenPresets.Fast, { TextTransparency = 0 })
+		
+		-- Автоскролл вниз
+		task.spawn(function()
+			task.wait(0.1)
+			scrollingFrame.CanvasPosition = Vector2.new(0, scrollingFrame.AbsoluteCanvasSize.Y)
+		end)
+		
+		return message
+	end
+	
+	-- Отправка сообщения
+	local function sendMessage()
+		local messageText = inputBox.Text
+		if messageText ~= "" and string.len(messageText) <= 200 then
+			local player = LocalPlayer
+			addMessage(player.Name, player.UserId, messageText, true)
+			
+			if callback ~= nil then
+				task.spawn(function()
+					callback(player.Name, player.UserId, messageText)
+				end)
+			end
+			
+			inputBox.Text = ""
+		end
+	end
+	
+	-- События для кнопки отправки
+	sendHitbox.MouseEnter:Connect(function()
+		createTween(sendButton, TweenPresets.Fast, { BackgroundColor3 = Color3.fromRGB(63, 142, 238) })
+	end)
+	
+	sendHitbox.MouseLeave:Connect(function()
+		createTween(sendButton, TweenPresets.Fast, { BackgroundColor3 = Color3.fromRGB(53, 132, 228) })
+	end)
+	
+	sendHitbox.MouseButton1Down:Connect(function()
+		createTween(sendButton, TweenPresets.Fast, { BackgroundColor3 = Color3.fromRGB(73, 152, 248) })
+	end)
+	
+	sendHitbox.MouseButton1Up:Connect(function()
+		createTween(sendButton, TweenPresets.Fast, { BackgroundColor3 = Color3.fromRGB(63, 142, 238) })
+		sendMessage()
+	end)
+	
+	-- Отправка по Enter
+	inputBox.FocusLost:Connect(function(enterPressed)
+		if enterPressed then
+			sendMessage()
+		end
+	end)
+	
+	-- Hover эффект для chat frame
+	chatClone.MouseEnter:Connect(function()
+		createTween(chatClone, TweenPresets.Fast, { BackgroundColor3 = Color3.fromRGB(60, 60, 60) })
+	end)
+	
+	chatClone.MouseLeave:Connect(function()
+		createTween(chatClone, TweenPresets.Fast, { BackgroundColor3 = Color3.fromRGB(54, 54, 54) })
+	end)
+	
+	local chatFuncs = {}
+	
+	-- Функция добавления сообщения от другого игрока
+	function chatFuncs:AddMessage(username, userId, messageText)
+		addMessage(username, userId, messageText, false)
+	end
+	
+	-- Функция очистки чата
+	function chatFuncs:Clear()
+		for _, child in pairs(scrollingFrame:GetChildren()) do
+			if child:IsA("Frame") and child.Name:match("Message_") then
+				createTween(child, TweenPresets.Fast, { BackgroundTransparency = 1 })
+				for _, element in pairs(child:GetChildren()) do
+					if element:IsA("ImageLabel") then
+						createTween(element, TweenPresets.Fast, { ImageTransparency = 1 })
+					elseif element:IsA("TextLabel") then
+						createTween(element, TweenPresets.Fast, { TextTransparency = 1 })
+					end
+				end
+				task.wait(0.05)
+			end
+		end
+		task.wait(0.3)
+		for _, child in pairs(scrollingFrame:GetChildren()) do
+			if child:IsA("Frame") and child.Name:match("Message_") then
+				child:Destroy()
+			end
+		end
+		messageCount = 0
+	end
+	
+	-- Функция удаления чата
+	function chatFuncs:Remove()
+		createTween(chatClone, TweenPresets.Medium, { BackgroundTransparency = 1 })
+		createTween(chatClone, TweenPresets.Medium, { Size = UDim2.new(1, 0, 0, 0) })
+		createTween(title, TweenPresets.Medium, { TextTransparency = 1 })
+		createTween(messagesContainer, TweenPresets.Medium, { BackgroundTransparency = 1 })
+		createTween(inputFrame, TweenPresets.Medium, { BackgroundTransparency = 1 })
+		if chatClone:FindFirstChild("CornerCover") then
+			createTween(chatClone.CornerCover, TweenPresets.Medium, { BackgroundTransparency = 1 })
+		end
+		task.wait(0.6)
+		OnMainElementRemove(chatClone)
+		chatClone:Destroy()
+	end
+	
+	return chatFuncs
+end
 			function sectionFuncs:NewButton(ButtonOptions) -- button
 				local buttonClone = Examples.Button:Clone()
 				local descExists = handleNilDesc(buttonClone, ButtonOptions)
